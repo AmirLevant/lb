@@ -9,7 +9,9 @@ import (
 
 func main() {
 
-	conn, err := net.Dial("tcp", ":8080")
+	argPortClient := os.Args[1]
+
+	conn, err := net.Dial("tcp", ":"+argPortClient)
 
 	if err != nil {
 		fmt.Println("Error connecting:", err)
@@ -23,6 +25,7 @@ func main() {
 	fmt.Println("Send a message:")
 
 	message, _ := reader.ReadString('\n')
+
 	fmt.Fprintf(conn, message)
 
 }

@@ -5,12 +5,14 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"os"
 )
 
 func main() {
+	argPort := os.Args[1]
 
 	// we listen on port 8080
-	listener, err := net.Listen("tcp", ":8080")
+	listener, err := net.Listen("tcp", ":"+argPort)
 
 	if err != nil {
 		fmt.Println("Error listening:", err)
@@ -19,7 +21,7 @@ func main() {
 
 	defer listener.Close()
 
-	fmt.Println("Server running on :8080")
+	fmt.Println("Server running on port :" + argPort)
 
 	for {
 		conn, err := listener.Accept()
