@@ -10,7 +10,7 @@ func main() {
 	listener, err := net.Listen("tcp", ":8080")
 
 	if err != nil {
-		fmt.Printf("Error listening: ", err)
+		fmt.Printf("Error listening: %s", err)
 	}
 
 	defer listener.Close()
@@ -20,7 +20,7 @@ func main() {
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
-			fmt.Printf("Error Accepting: ", err)
+			fmt.Printf("Error Accepting: %s", err)
 			continue
 		}
 
@@ -32,11 +32,12 @@ func handleConnection(conn net.Conn) {
 	// always close the connection at the end
 	defer conn.Close()
 
-	conn1, err := net.Dial("tcp", string(conn.RemoteAddr().String()))
+	conn1, err := net.Dial("tcp", ":9090")
 
 	if err != nil {
-		fmt.Printf("Error Connecting: ", err)
+		fmt.Printf("Error Connecting: %s ", err)
 	}
+
 	defer conn1.Close()
 
 }
