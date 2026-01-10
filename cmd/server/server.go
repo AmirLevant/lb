@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
 	"io"
 	"net"
@@ -38,19 +37,20 @@ func handleConnection(conn net.Conn) {
 	// always close the connection at the end
 	defer conn.Close()
 
-	reader := bufio.NewReader(conn)
+	remoteAdd := conn.RemoteAddr()
+	localAdd := conn.LocalAddr()
+	fmt.Printf("The remote address in the server is : %s\n", remoteAdd)
+	fmt.Printf("The local address in the server is: %s\n", localAdd)
 
-	for {
-		message, err := reader.ReadString('\n')
-		if err != nil {
-			if err != io.EOF {
-				fmt.Println("Error reading:", err)
-			}
-			return
-		}
+	message := make([]byte, 1024)
 
-		fmt.Printf("Message Recieved: %s", message)
+	_, err := conn.Read(message)
 
+	if err != nil && err != io.EOF {
+		fmt.Println("Error reading:", err)
+		return
 	}
+
+	fmt.Printf("Message Recieved: %s", message)
 
 }

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
 	"net"
 	"os"
@@ -13,9 +12,7 @@ func main() {
 	argPortClient := os.Args[1]
 
 	// write the message we want to deliver
-	reader := bufio.NewReader(os.Stdin)
-	fmt.Println("Send a message:")
-	message, _ := reader.ReadString('\n')
+	message := "hello my name is Amir"
 
 	// connect with the LB
 	conn, err := net.Dial("tcp", ":"+argPortClient)
@@ -27,6 +24,11 @@ func main() {
 	}
 
 	defer conn.Close()
+	remoteAdd := conn.RemoteAddr()
+	localAdd := conn.LocalAddr()
+
+	fmt.Printf("The remote address in the client is : %s\n", remoteAdd)
+	fmt.Printf("The local address in the client is: %s\n", localAdd)
 
 	// write into the connection
 	conn.Write([]byte(message))
