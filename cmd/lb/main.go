@@ -1,10 +1,16 @@
-package loadbalancer
+package main
 
 import (
 	"fmt"
 	"log"
 	"net"
 )
+
+func main() {
+	var lbPort string = "8080"
+	var serverPorts = []string{"9090", "9091", "9092"}
+	StartLoadBalancer(lbPort, serverPorts)
+}
 
 func StartLoadBalancer(port string, serverPorts []string) {
 
