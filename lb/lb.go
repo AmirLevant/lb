@@ -1,85 +1,90 @@
 package lb
 
 import (
-	"fmt"
-	"log"
+	"log/slog"
 	"net"
 )
 
-func StartLoadBalancer(port string, serverPorts []string) {
-
-	// Set up Load Balancer
-	loadBalancerListener, err := net.Listen("tcp", ":"+port)
-
+func StartLoadBalancer(port string, serverPorts []string) error {
+	// Sets up a socket for lb to listen on,
+	// for incoming connections
+	address := ":" + port
+	listener, err := net.Listen("tcp", address)
 	if err != nil {
-		fmt.Printf("Error listening: %s", err)
+		return err
 	}
+	defer listener.Close()
 
-	defer loadBalancerListener.Close()
+	slog.Info("Listening", slog.String("address", address))
 
-	fmt.Println("Load Balancer running on port:" + port)
-
-	// number dictating which server handles the request
-	// increments with new connection made
-	// increment means rotates server lb connects to
-
-	serverTrackerNum := 0
+	// Counts the number of total connections,
+	// used for round robin load balancing
+	robin := 0
 	for {
-		conn, err := loadBalancerListener.Accept()
+		conn, err := listener.Accept()
 		if err != nil {
-			fmt.Printf("Error Accepting: %s", err)
+			// TODO What happens if the TCP socket is closed for good?
+			// TODO Identify an intended close vs. an unintended close
+			slog.Error("Failed accepting listener", slog.Any("error", err))
 			continue
 		}
+		slog.Info("Accepted connection", slog.Any("address", conn.RemoteAddr()))
 
-		fmt.Println("Load Balancer recieved a Client message")
-
-		go HandleConnection(conn, serverPorts[serverTrackerNum])
-
-		// reset the server cycle
-		if serverTrackerNum == 2 {
-			serverTrackerNum = 0
-		}
-		serverTrackerNum++
+		go handleConnection(conn, serverPorts[robin%len(serverPorts)])
+		robin += 1
 	}
 }
 
-func HandleConnection(clientConn net.Conn, serverPort string) {
-
-	// close the connection at the end
+func handleConnection(clientConn net.Conn, serverPort string) {
+	// Ensure the client connection is closed even if
+	// the function exits early, e.g. if we fail to
+	// connect to the server
 	defer clientConn.Close()
 
-	// connect to server
-	serverConn, err := net.Dial("tcp", ":"+serverPort)
-	fmt.Println("LoadBalancer attempting to contact server :" + serverPort)
-
+	// Connect to the server
+	serverAddress := ":" + serverPort
+	serverConn, err := net.Dial("tcp", serverAddress)
 	if err != nil {
-		fmt.Printf("Error Connecting: %s ", err)
+		slog.Error("Failed to connect to server", slog.Any("error", err))
+		return
 	}
 	defer serverConn.Close()
 
-	TxBuffer := make([]byte, 4)
-	RxBuffer := make([]byte, 4)
+	logger := slog.With(
+		slog.Any("client_address", clientConn.RemoteAddr()),
+		slog.Any("server_address", serverConn.RemoteAddr()))
 
-	for {
+	txBuffer := make([]byte, 1024)
+	rxBuffer := make([]byte, 1024)
 
-		_, err := clientConn.Read(TxBuffer)
+	// TODO You need to handle errors writing to the server/client
+	// TODO What happens if no data is read?
+	// TODO Can reading/writing happen in parallel?
 
-		if err != nil {
-			log.Printf("Connection error: %v", err)
-			return
+	go func() {
+		for {
+			// Client -> Server
+			n, err := clientConn.Read(txBuffer)
+			if err != nil {
+				logger.Error("Failed reading from client", slog.Any("error", err))
+				return
+			}
+			serverConn.Write(txBuffer[:n])
 		}
+	}()
 
-		serverConn.Write(TxBuffer)
-
-		_, err = serverConn.Read(RxBuffer)
-
-		if err != nil {
-			log.Printf("error reading from server conn : %v", err)
-			return
+	go func() {
+		for {
+			// Server -> Client
+			n, err := serverConn.Read(rxBuffer)
+			if err != nil {
+				logger.Error("Failed reading from server", slog.Any("error", err))
+				return
+			}
+			clientConn.Write(rxBuffer[:n])
 		}
+	}()
 
-		clientConn.Write(RxBuffer)
-
-	}
-
+	// This just blocks the goroutine
+	select {}
 }
