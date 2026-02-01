@@ -34,7 +34,7 @@ func StartServer(port string) {
 			fmt.Println("Error Accepting:", err)
 			continue
 		}
-		fmt.Println("server " + port + " has recieved a message")
+		fmt.Println("server " + port + " has recieved a connection")
 		go HandleConnection(conn)
 	}
 }
@@ -61,7 +61,11 @@ func HandleConnection(conn net.Conn) {
 		// write back
 		msg = msg + 3
 		binary.LittleEndian.PutUint32(Txbuffer, msg)
-		conn.Write(Txbuffer)
+		_, err = conn.Write(Txbuffer)
+		if err != nil {
+			fmt.Println("Error writing:", err)
+		}
+
 	}
 
 }
