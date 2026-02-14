@@ -6,15 +6,21 @@ import (
 	"net"
 )
 
-func StartLoadBalancer(port string, serverPorts []string) error {
+type LbConfig struct {
+	LbPort  string   `toml:"lb_port"`
+	Servers []string `toml:"servers"`
+}
+
+func StartLoadBalancer(cfg LbConfig) error {
 	// Sets up a socket for lb to listen on,
 	// for incoming connections
-	address := ":" + port
+	address := ":" + cfg.LbPort
 	listener, err := net.Listen("tcp", address)
 	if err != nil {
 		return err
 	}
 	defer listener.Close()
+	slog.Info("Running lb")
 
 	slog.Info("Listening", slog.String("address", address))
 
@@ -26,24 +32,22 @@ func StartLoadBalancer(port string, serverPorts []string) error {
 		if err != nil {
 			// TODO What happens if the TCP socket is closed for good?
 			// handle different errs, which ones do we break with?
-			slog.Error("Failed accepting listener", slog.Any("error", err))
+			slog.Error("failed accepting listener", slog.Any("error", err))
 			continue
 		}
 		slog.Info("Accepted connection", slog.Any("address", conn.RemoteAddr()))
-
-		go handleConnection(conn, serverPorts[robin%len(serverPorts)])
+		go handleConnection(conn, cfg.Servers[robin%len(cfg.Servers)])
 		robin += 1
 	}
 }
 
-func handleConnection(clientConn net.Conn, serverPort string) {
+func handleConnection(clientConn net.Conn, serverAddress string) {
 	// Ensure the client connection is closed even if
 	// the function exits early, e.g. if we fail to
 	// connect to the server
 	defer clientConn.Close()
 
 	// Connect to the server
-	serverAddress := ":" + serverPort
 	serverConn, err := net.Dial("tcp", serverAddress)
 	if err != nil {
 		slog.Error("Failed to connect to server", slog.Any("error", err))
@@ -71,6 +75,7 @@ func handleConnection(clientConn net.Conn, serverPort string) {
 			_, err = serverConn.Write(txBuffer[:n])
 			if err != nil {
 				logger.Error("Failed writing to server", slog.Any("error", err))
+				return
 			}
 		}
 	}()
@@ -86,6 +91,7 @@ func handleConnection(clientConn net.Conn, serverPort string) {
 			_, err = clientConn.Write(rxBuffer[:n])
 			if err != nil {
 				logger.Error("Failed writing to client", slog.Any("error", err))
+				return
 			}
 		}
 	}()
