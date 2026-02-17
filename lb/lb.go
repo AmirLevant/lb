@@ -1,9 +1,12 @@
 package lb
 
 import (
+	"fmt"
 	"io"
 	"log/slog"
 	"net"
+
+	"golang.org/x/sync/errgroup"
 )
 
 type LbConfig struct {
@@ -59,43 +62,22 @@ func handleConnection(clientConn net.Conn, serverAddress string) {
 		slog.Any("client_address", clientConn.RemoteAddr()),
 		slog.Any("server_address", serverConn.RemoteAddr()))
 
-	txBuffer := make([]byte, 1024)
-	rxBuffer := make([]byte, 1024)
-
-	// TODO what happens if one of the goroutines fail
-
-	go func() {
-		for {
-			// Client -> Server
-			n, err := clientConn.Read(txBuffer)
-			if err != nil && err != io.EOF {
-				logger.Error("Failed reading from client", slog.Any("error", err))
-				return
-			}
-			_, err = serverConn.Write(txBuffer[:n])
-			if err != nil {
-				logger.Error("Failed writing to server", slog.Any("error", err))
-				return
-			}
+	var g errgroup.Group
+	g.Go(func() error {
+		_, err := io.Copy(clientConn, serverConn)
+		if err != nil {
+			return fmt.Errorf("proxy client to server: %w", err)
 		}
-	}()
-
-	go func() {
-		for {
-			// Server -> Client
-			n, err := serverConn.Read(rxBuffer)
-			if err != nil && err != io.EOF {
-				logger.Error("Failed reading from server", slog.Any("error", err))
-				return
-			}
-			_, err = clientConn.Write(rxBuffer[:n])
-			if err != nil {
-				logger.Error("Failed writing to client", slog.Any("error", err))
-				return
-			}
+		return nil
+	})
+	g.Go(func() error {
+		_, err := io.Copy(serverConn, clientConn)
+		if err != nil {
+			return fmt.Errorf("proxy server to client: %w", err)
 		}
-	}()
-
-	// This just blocks the goroutine
-	select {}
+		return nil
+	})
+	if err := g.Wait(); err != nil {
+		logger.Error("Failed proxying", slog.Any("error", err))
+	}
 }
