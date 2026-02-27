@@ -58,7 +58,7 @@ func handleConnection(clientConn net.Conn, serverAddress string) error {
 	// Connect to the server
 	serverConn, err := net.Dial("tcp", serverAddress)
 	if err != nil {
-		return fmt.Errorf("Failed connecting to server: %w", err)
+		return fmt.Errorf("failed connecting to server: %w", err)
 	}
 	defer serverConn.Close()
 
@@ -78,7 +78,7 @@ func handleConnection(clientConn net.Conn, serverAddress string) error {
 		return nil
 	})
 	if err := g.Wait(); err != nil {
-		return fmt.Errorf("Failed proxying: %w", err)
+		return fmt.Errorf("failed proxying: %w", err)
 	}
 
 	return nil
