@@ -2,11 +2,7 @@ FROM golang:1.25.6
 
 WORKDIR /app
 
-COPY go.mod .
-COPY go.sum .
-COPY ./lb/ ./lb/
-COPY ./cmd/ ./cmd/
-COPY Makefile .
+COPY ./lb .
 
 RUN make build .
 

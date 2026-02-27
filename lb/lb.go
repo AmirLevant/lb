@@ -35,16 +35,21 @@ func StartLoadBalancer(cfg LbConfig) error {
 		if err != nil {
 			// TODO What happens if the TCP socket is closed for good?
 			// handle different errs, which ones do we break with?
-			slog.Error("failed accepting listener", slog.Any("error", err))
+			slog.Error("Failed accepting listener", slog.Any("error", err))
 			continue
 		}
 		slog.Info("Accepted connection", slog.Any("address", conn.RemoteAddr()))
-		go handleConnection(conn, cfg.Servers[robin%len(cfg.Servers)])
+
+		go func() {
+			if err := handleConnection(conn, cfg.Servers[robin%len(cfg.Servers)]); err != nil {
+				slog.Error("Failed handling connection", slog.Any("error", err))
+			}
+		}()
 		robin += 1
 	}
 }
 
-func handleConnection(clientConn net.Conn, serverAddress string) {
+func handleConnection(clientConn net.Conn, serverAddress string) error {
 	// Ensure the client connection is closed even if
 	// the function exits early, e.g. if we fail to
 	// connect to the server
@@ -53,14 +58,9 @@ func handleConnection(clientConn net.Conn, serverAddress string) {
 	// Connect to the server
 	serverConn, err := net.Dial("tcp", serverAddress)
 	if err != nil {
-		slog.Error("Failed to connect to server", slog.Any("error", err))
-		return
+		return fmt.Errorf("Failed connecting to server: %w", err)
 	}
 	defer serverConn.Close()
-
-	logger := slog.With(
-		slog.Any("client_address", clientConn.RemoteAddr()),
-		slog.Any("server_address", serverConn.RemoteAddr()))
 
 	var g errgroup.Group
 	g.Go(func() error {
@@ -78,6 +78,8 @@ func handleConnection(clientConn net.Conn, serverAddress string) {
 		return nil
 	})
 	if err := g.Wait(); err != nil {
-		logger.Error("Failed proxying", slog.Any("error", err))
+		return fmt.Errorf("Failed proxying: %w", err)
 	}
+
+	return nil
 }
