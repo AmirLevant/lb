@@ -1,9 +1,20 @@
-Welcome to Amir Mansor's Layer 4 Load Balancer Project
+lb -  Layer 4 Load Balancer written in Go
 
 
-## Background
-The project started as a way to deepen my understanding of system programming. 
-It is comprised 
+## Run
+
+in the parent directory: 
+
+```makefile
+make build
+```
+
+will produce 3 binaries:
+    - lb 
+    - test-server
+    - test-client
+
+run the lb directory
 
 
 ## General Info
