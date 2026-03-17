@@ -3,56 +3,51 @@ lb -  Layer 4 Load Balancer written in Go
 
 ## Run
 
-in the parent directory: 
-
+1. Build the binaries
 ```makefile
 make build
 ```
-
 will produce 3 binaries:
     - lb 
     - test-server
     - test-client
 
-run the lb directory
+2. Run the lb binary with the TOML config (sets port to 8080)
+```bash
+./bin/lb --config=./example/lb.toml
+```
+
+3. You are now ready to load balance! 
 
 
-## General Info
+## Config
+TOML helps set the addresses for lb and the test-client/test-servers
+The files are located in the example folder
+The current ports are for testing  
+
+
+## Example
 Technologies used:
     - Go 1.25.6
     - TOML
     - Makefile
     - Docker
 
-
-The load balancer is ```lb.go``` 
-I built a test-client and test-server for ease of testing. 
-
-
-
-## Build - Docker
 I configured an approachable testing enviroment using Docker.
 
 ```docker
 Docker compose up
 ```
-- Spins up:
-    - 3 server Containers
-    - 1 load balancer
+- Builds images
+- Spins up containers:
+    - 3 servers 
+    - 1 lb
     - 1 client
 
-- The client will transmit a number 10 times to the server
+- The client will transmit a number 10 times to a server
+- The lb will act as a middle man
 - The server will increment the recieved number
 - The server will respond with the changed number
-- The client will recieve the number and print it
-
-
-## Build - no Docker
-A Makefile is available to create binaries of the test-client/server and lb.
-
-1.  Start each server instance, change the respective TOML port to a different port
-2. Start the Load Balancer 
-3. Start the Client 
-
+- The client will recieve the changed number and print it
 
 
